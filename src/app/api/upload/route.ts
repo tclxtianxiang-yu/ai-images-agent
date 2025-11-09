@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ImageUploadSchema, ImageProcessingResponse } from '@/types/image';
 import { compressImage, uploadToR2, generateImageDescription } from '@/lib/image-processing';
 
-export const runtime = 'edge'; // Enable Edge Runtime for Cloudflare Workers
+// Note: OpenNext automatically handles Cloudflare Workers deployment
+// No need to explicitly set runtime = 'edge'
 
 /**
  * POST /api/upload

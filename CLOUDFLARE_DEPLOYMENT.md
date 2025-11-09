@@ -94,7 +94,7 @@ name = "ai-images-agent-dev"
 
 [[env.development.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "ai-images-dev"  # 如果有开发环境的 bucket
+bucket_name = "bucket1"  # 如果有开发环境的 bucket
 
 # 生产环境配置
 [env.production]
@@ -102,11 +102,11 @@ name = "ai-images-agent"
 
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "ai-images"  # 你的生产环境 bucket
+bucket_name = "bucket1"  # 你的生产环境 bucket
 
 # 如果需要绑定自定义域名到 Worker（可选）
 # routes = [
-#   { pattern = "images.your-domain.com/*", zone_name = "your-domain.com" }
+#   { pattern = "static.mikasa-ackerman.vip/*", zone_name = "mikasa-ackerman.vip" }
 # ]
 ```
 

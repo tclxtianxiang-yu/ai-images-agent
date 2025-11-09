@@ -2,7 +2,7 @@
 # Documentation: https://developers.cloudflare.com/workers/wrangler/configuration/
 
 name = "ai-images-agent"
-main = ".vercel/output/static/_worker.js"
+main = ".open-next/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -10,9 +10,9 @@ compatibility_flags = ["nodejs_compat"]
 # Find it at: https://dash.cloudflare.com -> Workers & Pages -> Overview
 # account_id = "YOUR_ACCOUNT_ID"
 
-# Build configuration
+# Build configuration for OpenNext
 [build]
-command = "pnpm run build"
+command = "pnpm run build && pnpm run build:worker"
 
 # Environment variables (non-sensitive)
 [vars]
@@ -22,9 +22,9 @@ NODE_ENV = "production"
 # The bucket must be created in your Cloudflare dashboard first
 [[r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "ai-images"
+bucket_name = "bucket1"
 # For preview/development environment
-preview_bucket_name = "ai-images-dev"
+preview_bucket_name = "bucket1"
 
 # Secrets (sensitive data - set via wrangler CLI)
 # Run: wrangler secret put AI_API_KEY
@@ -32,8 +32,9 @@ preview_bucket_name = "ai-images-dev"
 # Don't put sensitive data directly in this file
 
 # Limits and configuration
-[limits]
-cpu_ms = 30000  # 30 seconds max CPU time (for AI processing)
+# Note: CPU limits are only available on paid plans
+# [limits]
+# cpu_ms = 30000  # 30 seconds max CPU time (for AI processing)
 
 # Development environment
 [env.development]
@@ -41,19 +42,19 @@ name = "ai-images-agent-dev"
 
 [[env.development.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "ai-images-dev"
+bucket_name = "bucket1"
 
 # Production environment
 [env.production]
 name = "ai-images-agent"
 routes = [
   # Add your custom domain routes here
-  # { pattern = "images.mikasa-ackerman.vip/*", zone_name = "mikasa-ackerman.vip" }
+  { pattern = "static.mikasa-ackerman.vip/*", zone_name = "mikasa-ackerman.vip" }
 ]
 
 [[env.production.r2_buckets]]
 binding = "R2_BUCKET"
-bucket_name = "ai-images"
+bucket_name = "bucket1"
 
 # Observability
 [observability]
