@@ -179,9 +179,10 @@ function getCloudflareEnv<
   }
 >(): T | null {
   try {
-    const context = (globalThis as typeof globalThis & {
-      [Symbol.for('__cloudflare-context__')]?: { env?: T };
-    })[Symbol.for('__cloudflare-context__')];
+    const context = Reflect.get(
+      globalThis as typeof globalThis,
+      Symbol.for('__cloudflare-context__')
+    ) as { env?: T } | undefined;
 
     return context?.env ?? null;
   } catch {
