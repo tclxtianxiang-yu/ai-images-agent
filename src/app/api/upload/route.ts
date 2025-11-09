@@ -1,19 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { ImageUploadSchema, ImageProcessingResponse } from '@/types/image';
-import { mastra } from '@/mastra';
-
-const AgentOutputSchema = z.object({
-  url: z.string().describe('图片的完整访问地址'),
-  key: z.string(),
-  description: z.string(),
-  keywords: z.array(z.string()),
-  confidence: z.number(),
-  compressionRatio: z.number(),
-  originalSize: z.number(),
-  compressedSize: z.number(),
-  uploadedAt: z.string(),
-});
+import { compressImage, uploadToR2, generateImageDescription } from '@/lib/image-processing';
 
 // Note: OpenNext automatically handles Cloudflare Workers deployment
 // No need to explicitly set runtime = 'edge'
@@ -47,55 +34,41 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${traceId}] Processing image: ${fileName} (${fileSize} bytes, ${mimeType})`);
 
-    const agent = mastra.getAgent('imageAgent');
-    if (!agent) {
-      throw new Error('Image agent not available');
-    }
+    // Step 1: Compress image
+    const compressionResult = await compressImage(imageData, fileName);
 
-    const agentResult = await agent.generate(
-      [
-        {
-          role: 'user',
-          content: JSON.stringify({
-            traceId,
-            fileName,
-            mimeType,
-            fileSize,
-            language,
-            imageData,
-          }),
-        },
-      ],
-      {
-        maxSteps: 8,
-        structuredOutput: {
-          schema: AgentOutputSchema,
-          errorStrategy: 'strict',
-        },
-        toolChoice: 'required',
-      },
+    // Step 2: Upload to R2
+    const uploadResult = await uploadToR2(
+      compressionResult.compressedData,
+      fileName,
+      mimeType,
     );
 
-    const { object } = agentResult;
+    // Step 3: Generate AI description
+    const descriptionResult = await generateImageDescription(
+      compressionResult.compressedData,
+      mimeType,
+      language,
+    );
 
     // Build response
     const response: ImageProcessingResponse = {
       success: true,
       data: {
-        url: object.url,
-        key: object.key,
-        description: object.description,
-        keywords: object.keywords,
-        confidence: object.confidence,
-        compressionRatio: object.compressionRatio,
-        originalSize: object.originalSize,
-        compressedSize: object.compressedSize,
-        uploadedAt: object.uploadedAt,
+        url: uploadResult.url,
+        key: uploadResult.key,
+        description: descriptionResult.description,
+        keywords: descriptionResult.keywords,
+        confidence: descriptionResult.confidence,
+        compressionRatio: compressionResult.compressionRatio,
+        originalSize: compressionResult.originalSize,
+        compressedSize: compressionResult.compressedSize,
+        uploadedAt: uploadResult.uploadedAt,
       },
       traceId,
     };
 
-    console.log(`[${traceId}] Successfully processed image: ${object.url}`);
+    console.log(`[${traceId}] Successfully processed image: ${uploadResult.url}`);
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
@@ -112,18 +85,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * GET /api/upload
- * Health check endpoint
- */
-export async function GET() {
-  return NextResponse.json({
-    status: 'ok',
-    service: 'AI Images Agent',
-    endpoints: {
-      upload: 'POST /api/upload',
-    },
-  });
 }
