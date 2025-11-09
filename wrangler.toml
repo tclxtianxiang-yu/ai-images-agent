@@ -6,6 +6,10 @@ main = ".open-next/worker.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+[assets]
+binding = "ASSETS"
+directory = ".open-next/assets"
+
 # Account ID - Replace with your Cloudflare account ID
 # Find it at: https://dash.cloudflare.com -> Workers & Pages -> Overview
 # account_id = "YOUR_ACCOUNT_ID"
