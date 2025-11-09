@@ -1,12 +1,9 @@
 import { Mastra } from '@mastra/core/mastra';
 import { PinoLogger } from '@mastra/loggers';
-import { imageAgent } from './agents/image-agent';
+import { imageWorkflow } from './workflows/image-workflow';
 
 export const mastra = new Mastra({
-  workflows: {},
-  agents: {
-    imageAgent,
-  },
+  workflows: { imageWorkflow },
   logger: new PinoLogger({
     name: 'AI-Images-Agent',
     level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',

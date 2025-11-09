@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ImageUploadSchema, ImageProcessingResponse } from '@/types/image';
-import { compressImage, uploadToR2, generateImageDescription } from '@/lib/image-processing';
+import { mastra } from '@/mastra';
 
 // Note: OpenNext automatically handles Cloudflare Workers deployment
 // No need to explicitly set runtime = 'edge'
@@ -34,41 +34,46 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${traceId}] Processing image: ${fileName} (${fileSize} bytes, ${mimeType})`);
 
-    // Step 1: Compress image
-    const compressionResult = await compressImage(imageData, fileName);
+    const workflow = mastra.getWorkflow('imageWorkflow');
+    const run = await workflow.createRunAsync({ resourceId: traceId });
+    const workflowResult = await run.start({
+      inputData: {
+        imageData,
+        fileName,
+        mimeType,
+        fileSize,
+        language,
+      },
+    });
 
-    // Step 2: Upload to R2
-    const uploadResult = await uploadToR2(
-      compressionResult.compressedData,
-      fileName,
-      mimeType,
-    );
+    if (workflowResult.status !== 'success') {
+      const message =
+        workflowResult.status === 'failed'
+          ? workflowResult.error?.message ?? 'Workflow execution failed'
+          : 'Workflow did not complete successfully';
+      throw new Error(message);
+    }
 
-    // Step 3: Generate AI description
-    const descriptionResult = await generateImageDescription(
-      compressionResult.compressedData,
-      mimeType,
-      language,
-    );
+    const output = workflowResult.result;
 
     // Build response
     const response: ImageProcessingResponse = {
       success: true,
       data: {
-        url: uploadResult.url,
-        key: uploadResult.key,
-        description: descriptionResult.description,
-        keywords: descriptionResult.keywords,
-        confidence: descriptionResult.confidence,
-        compressionRatio: compressionResult.compressionRatio,
-        originalSize: compressionResult.originalSize,
-        compressedSize: compressionResult.compressedSize,
-        uploadedAt: uploadResult.uploadedAt,
+        url: output.url,
+        key: output.key,
+        description: output.description,
+        keywords: output.keywords,
+        confidence: output.confidence,
+        compressionRatio: output.compressionRatio,
+        originalSize: output.originalSize,
+        compressedSize: output.compressedSize,
+        uploadedAt: output.uploadedAt,
       },
       traceId,
     };
 
-    console.log(`[${traceId}] Successfully processed image: ${uploadResult.url}`);
+    console.log(`[${traceId}] Successfully processed image: ${output.url}`);
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
