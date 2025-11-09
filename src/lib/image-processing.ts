@@ -44,9 +44,8 @@ export async function uploadToR2(
     };
   }
 
-  // Production code for Cloudflare Workers
-  // @ts-expect-error - R2 binding will be available in Workers runtime
-  const R2_BUCKET = globalThis.R2_BUCKET;
+  const cfEnv = getCloudflareEnv();
+  const R2_BUCKET = cfEnv?.R2_BUCKET;
 
   if (!R2_BUCKET) {
     throw new Error('R2_BUCKET binding not found');
@@ -81,9 +80,9 @@ export async function generateImageDescription(
   mimeType: string,
   language: 'en' | 'zh' | 'es' | 'fr' | 'de' | 'ja' = 'en'
 ): Promise<{ description: string; keywords: string[]; confidence: number }> {
-  // In Edge Runtime, we need to get env vars at build time or runtime
-  // @ts-expect-error - Environment variable access in Edge Runtime
-  const apiKey = process.env.AI_API_KEY || globalThis.AI_API_KEY;
+  const cfEnv = getCloudflareEnv();
+  // In Edge Runtime, env vars may come from process.env or Workers bindings
+  const apiKey = process.env.AI_API_KEY || cfEnv?.AI_API_KEY;
   if (!apiKey) {
     throw new Error('AI_API_KEY environment variable is not set. Please check your .env file or Cloudflare secrets.');
   }
@@ -169,4 +168,23 @@ function extractKeywords(text: string): string[] {
     .map(([word]) => word);
 
   return keywords;
+}
+
+function getCloudflareEnv<
+  T extends Record<string, unknown> & {
+    R2_BUCKET?: {
+      put: (key: string, data: ArrayBuffer | ArrayBufferView, options?: unknown) => Promise<unknown>;
+    };
+    AI_API_KEY?: string;
+  }
+>(): T | null {
+  try {
+    const context = (globalThis as typeof globalThis & {
+      [Symbol.for('__cloudflare-context__')]?: { env?: T };
+    })[Symbol.for('__cloudflare-context__')];
+
+    return context?.env ?? null;
+  } catch {
+    return null;
+  }
 }
