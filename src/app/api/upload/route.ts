@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       language,
     };
 
-    const agentResponse = await agent.generate(
+    const agentResult = await agent.generate(
       [
         {
           role: 'user',
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       },
     );
 
-    const { object: output } = await (agentResponse as any).getFullOutput();
+    const { object: output } = agentResult;
 
     // Build response
     const response: ImageProcessingResponse = {
