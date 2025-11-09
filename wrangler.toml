@@ -1,0 +1,60 @@
+# Cloudflare Workers configuration for AI Images Agent
+# Documentation: https://developers.cloudflare.com/workers/wrangler/configuration/
+
+name = "ai-images-agent"
+main = ".vercel/output/static/_worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Account ID - Replace with your Cloudflare account ID
+# Find it at: https://dash.cloudflare.com -> Workers & Pages -> Overview
+# account_id = "YOUR_ACCOUNT_ID"
+
+# Build configuration
+[build]
+command = "pnpm run build"
+
+# Environment variables (non-sensitive)
+[vars]
+NODE_ENV = "production"
+
+# R2 bucket binding
+# The bucket must be created in your Cloudflare dashboard first
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "ai-images"
+# For preview/development environment
+preview_bucket_name = "ai-images-dev"
+
+# Secrets (sensitive data - set via wrangler CLI)
+# Run: wrangler secret put AI_API_KEY
+# This will store your OpenAI API key securely
+# Don't put sensitive data directly in this file
+
+# Limits and configuration
+[limits]
+cpu_ms = 30000  # 30 seconds max CPU time (for AI processing)
+
+# Development environment
+[env.development]
+name = "ai-images-agent-dev"
+
+[[env.development.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "ai-images-dev"
+
+# Production environment
+[env.production]
+name = "ai-images-agent"
+routes = [
+  # Add your custom domain routes here
+  # { pattern = "images.mikasa-ackerman.vip/*", zone_name = "mikasa-ackerman.vip" }
+]
+
+[[env.production.r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "ai-images"
+
+# Observability
+[observability]
+enabled = true

@@ -39,3 +39,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# wrangler
+.wrangler/
+wrangler.toml.backup
+
+# mastra
+mastra.db
+mastra.db-*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

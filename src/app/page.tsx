@@ -1,65 +1,185 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { ImageUpload } from '@/components/image-upload';
+import { ImageResult } from '@/components/image-result';
+import { ImageHistory, addToHistory } from '@/components/image-history';
+import { UploadStage, ImageProcessingResponse } from '@/types/image';
+
+interface ProcessedImage {
+  url: string;
+  description: string;
+  keywords: string[];
+  fileName: string;
+  compressionRatio: number;
+  confidence: number;
+}
 
 export default function Home() {
+  const [isUploading, setIsUploading] = useState(false);
+  const [stage, setStage] = useState<UploadStage>(UploadStage.IDLE);
+  const [result, setResult] = useState<ProcessedImage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUpload = async (file: File) => {
+    setIsUploading(true);
+    setError(null);
+    setResult(null);
+    setStage(UploadStage.VALIDATING);
+
+    try {
+      // Convert file to base64
+      const base64 = await fileToBase64(file);
+
+      setStage(UploadStage.COMPRESSING);
+
+      // Call API
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData: base64,
+          fileName: file.name,
+          mimeType: file.type,
+          fileSize: file.size,
+          language: 'en', // Could be made configurable
+        }),
+      });
+
+      const data: ImageProcessingResponse = await response.json();
+
+      if (!data.success || !data.data) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      setStage(UploadStage.COMPLETED);
+
+      const processedImage: ProcessedImage = {
+        url: data.data.url,
+        description: data.data.description,
+        keywords: data.data.keywords,
+        fileName: file.name,
+        compressionRatio: data.data.compressionRatio,
+        confidence: data.data.confidence,
+      };
+
+      setResult(processedImage);
+
+      // Add to history
+      addToHistory({
+        fileName: file.name,
+        url: data.data.url,
+        description: data.data.description,
+        keywords: data.data.keywords,
+        uploadedAt: data.data.uploadedAt,
+        thumbnailData: `data:${file.type};base64,${base64.substring(0, 5000)}`, // Truncate for storage
+      });
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setStage(UploadStage.FAILED);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        // Remove data URL prefix
+        const base64Data = base64.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+      <div className="max-w-5xl mx-auto px-6 py-12">
+        {/* Header */}
+        <header className="mb-12 text-center">
+          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 mb-3">
+            AI Images Agent
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg text-zinc-600 dark:text-zinc-400">
+            Upload any image to get automated compression, cloud hosting, and AI-generated descriptions
           </p>
+        </header>
+
+        {/* Main Content */}
+        <div className="grid gap-8 lg:grid-cols-2">
+          {/* Left Column - Upload */}
+          <div className="space-y-6">
+            <ImageUpload onUpload={handleUpload} isUploading={isUploading} stage={stage} />
+
+            {error && (
+              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <h3 className="font-semibold text-red-900 dark:text-red-200 mb-1">
+                  Upload Failed
+                </h3>
+                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setStage(UploadStage.IDLE);
+                  }}
+                  className="mt-3 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Right Column - Results or History */}
+          <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-6">
+            {result ? (
+              <ImageResult {...result} />
+            ) : (
+              <ImageHistory onSelect={(item) => {
+                setResult({
+                  url: item.url,
+                  description: item.description,
+                  keywords: item.keywords,
+                  fileName: item.fileName,
+                  compressionRatio: 0,
+                  confidence: 0.85,
+                });
+              }} />
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {/* Footer */}
+        <footer className="mt-16 text-center text-sm text-zinc-600 dark:text-zinc-400">
+          <p>
+            Powered by{' '}
+            <a
+              href="https://mastra.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Mastra
+            </a>
+            {' '}&{' '}
+            <a
+              href="https://www.cloudflare.com/products/r2/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-zinc-900 dark:text-zinc-50 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              Cloudflare R2
+            </a>
+          </p>
+        </footer>
+      </div>
     </div>
   );
 }
