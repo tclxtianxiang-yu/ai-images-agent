@@ -41,14 +41,14 @@ export function ImageResult({
 
       {/* Description */}
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Description</h3>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">图片描述</h3>
         <p className="text-zinc-700 dark:text-zinc-300 leading-relaxed">{description}</p>
       </div>
 
       {/* Keywords */}
       {keywords.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Keywords</h3>
+          <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">关键词</h3>
           <div className="flex flex-wrap gap-2">
             {keywords.map((keyword, index) => (
               <span
@@ -64,7 +64,7 @@ export function ImageResult({
 
       {/* Image URL with Copy Button */}
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Image URL</h3>
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">图片链接</h3>
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -83,7 +83,7 @@ export function ImageResult({
               }
             `}
           >
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? '已复制' : '复制链接'}
           </button>
         </div>
       </div>
@@ -91,13 +91,13 @@ export function ImageResult({
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800">
         <div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Compression</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">压缩率</p>
           <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             {compressionRatio.toFixed(1)}%
           </p>
         </div>
         <div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">AI Confidence</p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">AI 置信度</p>
           <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             {(confidence * 100).toFixed(0)}%
           </p>

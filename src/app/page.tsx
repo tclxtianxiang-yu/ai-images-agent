@@ -33,6 +33,7 @@ export default function Home() {
 
       setStage(UploadStage.COMPRESSING);
 
+      setStage(UploadStage.UPLOADING);
       // Call API
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -44,10 +45,11 @@ export default function Home() {
           fileName: file.name,
           mimeType: file.type,
           fileSize: file.size,
-          language: 'en', // Could be made configurable
+          language: 'zh',
         }),
       });
 
+      setStage(UploadStage.DESCRIBING);
       const data: ImageProcessingResponse = await response.json();
 
       if (!data.success || !data.data) {
@@ -74,11 +76,11 @@ export default function Home() {
         description: data.data.description,
         keywords: data.data.keywords,
         uploadedAt: data.data.uploadedAt,
-        thumbnailData: `data:${file.type};base64,${base64.substring(0, 5000)}`, // Truncate for storage
+        thumbnailData: data.data.url,
       });
     } catch (err) {
       console.error('Upload error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : '上传过程中出现问题，请稍后重试');
       setStage(UploadStage.FAILED);
     } finally {
       setIsUploading(false);
@@ -105,10 +107,10 @@ export default function Home() {
         {/* Header */}
         <header className="mb-12 text-center">
           <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 mb-3">
-            AI Images Agent
+            AI 图像智能助手
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400">
-            Upload any image to get automated compression, cloud hosting, and AI-generated descriptions
+            上传任意图片，即可自动压缩、上传至云端，并生成中文 AI 描述
           </p>
         </header>
 
@@ -121,7 +123,7 @@ export default function Home() {
             {error && (
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
                 <h3 className="font-semibold text-red-900 dark:text-red-200 mb-1">
-                  Upload Failed
+                  上传失败
                 </h3>
                 <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 <button
@@ -131,7 +133,7 @@ export default function Home() {
                   }}
                   className="mt-3 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
                 >
-                  Try Again
+                  重新上传
                 </button>
               </div>
             )}
@@ -159,7 +161,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="mt-16 text-center text-sm text-zinc-600 dark:text-zinc-400">
           <p>
-            Powered by{' '}
+            驱动自{' '}
             <a
               href="https://mastra.ai"
               target="_blank"
@@ -168,7 +170,7 @@ export default function Home() {
             >
               Mastra
             </a>
-            {' '}&{' '}
+            {' '}与{' '}
             <a
               href="https://www.cloudflare.com/products/r2/"
               target="_blank"

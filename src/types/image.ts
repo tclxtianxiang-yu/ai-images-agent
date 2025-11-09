@@ -8,7 +8,7 @@ export const ImageUploadSchema = z.object({
   mimeType: z.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/webp']),
   fileSize: z.number().max(10 * 1024 * 1024), // 10MB max
   imageData: z.string(), // Base64 encoded
-  language: z.enum(['en', 'zh', 'es', 'fr', 'de', 'ja']).default('en'),
+  language: z.enum(['en', 'zh', 'es', 'fr', 'de', 'ja']).default('zh'),
 });
 
 export type ImageUpload = z.infer<typeof ImageUploadSchema>;
@@ -69,5 +69,5 @@ export interface ImageHistoryItem {
   description: string;
   keywords: string[];
   uploadedAt: string;
-  thumbnailData?: string; // Base64 thumbnail for preview
+  thumbnailData?: string; // Data URL 或远程图片地址，用于历史记录缩略图
 }

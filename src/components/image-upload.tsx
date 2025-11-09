@@ -19,10 +19,10 @@ export function ImageUpload({ onUpload, isUploading, stage }: ImageUploadProps) 
 
   const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return `Invalid file type. Please upload PNG, JPEG, or WebP images.`;
+      return '文件类型不支持，请上传 PNG、JPEG 或 WebP 图片。';
     }
     if (file.size > MAX_SIZE) {
-      return `File too large. Maximum size is 10MB.`;
+      return '文件过大，单张图片不能超过 10MB。';
     }
     return null;
   };
@@ -82,19 +82,19 @@ export function ImageUpload({ onUpload, isUploading, stage }: ImageUploadProps) 
   const getStageMessage = () => {
     switch (stage) {
       case UploadStage.VALIDATING:
-        return 'Validating image...';
+        return '正在校验图片...';
       case UploadStage.COMPRESSING:
-        return 'Compressing image...';
+        return '正在无损压缩图片...';
       case UploadStage.UPLOADING:
-        return 'Uploading to cloud...';
+        return '正在上传到云端...';
       case UploadStage.DESCRIBING:
-        return 'Generating AI description...';
+        return 'AI 正在生成中文描述...';
       case UploadStage.COMPLETED:
-        return 'Processing complete!';
+        return '处理完成！';
       case UploadStage.FAILED:
-        return 'Processing failed';
+        return '处理失败，请重试';
       default:
-        return 'Drag and drop an image, or click to select';
+        return '拖拽图片到此处，或点击选择图片';
     }
   };
 
@@ -150,7 +150,7 @@ export function ImageUpload({ onUpload, isUploading, stage }: ImageUploadProps) 
               {getStageMessage()}
             </p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              PNG, JPEG, WebP up to 10MB
+              支持 PNG/JPEG/WebP，单张不超过 10MB
             </p>
           </div>
 
