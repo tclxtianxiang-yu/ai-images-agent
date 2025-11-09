@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { ImageUploadSchema, ImageProcessingResponse } from '@/types/image';
 import { mastra } from '@/mastra';
+
+const AgentOutputSchema = z.object({
+  url: z.string(),
+  key: z.string(),
+  description: z.string(),
+  keywords: z.array(z.string()),
+  confidence: z.number(),
+  compressionRatio: z.number(),
+  originalSize: z.number(),
+  compressedSize: z.number(),
+  uploadedAt: z.string(),
+});
 
 // Note: OpenNext automatically handles Cloudflare Workers deployment
 // No need to explicitly set runtime = 'edge'
@@ -34,27 +47,39 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${traceId}] Processing image: ${fileName} (${fileSize} bytes, ${mimeType})`);
 
-    const workflow = mastra.getWorkflow('imageWorkflow');
-    const run = await workflow.createRunAsync({ resourceId: traceId });
-    const workflowResult = await run.start({
-      inputData: {
-        imageData,
-        fileName,
-        mimeType,
-        fileSize,
-        language,
-      },
-    });
-
-    if (workflowResult.status !== 'success') {
-      const message =
-        workflowResult.status === 'failed'
-          ? workflowResult.error?.message ?? 'Workflow execution failed'
-          : 'Workflow did not complete successfully';
-      throw new Error(message);
+    const agent = mastra.getAgent('imageAgent');
+    if (!agent) {
+      throw new Error('Image agent is not registered.');
     }
 
-    const output = workflowResult.result;
+    const payload = {
+      imageData,
+      fileName,
+      mimeType,
+      fileSize,
+      language,
+    };
+
+    const agentResponse = await agent.generate(
+      [
+        {
+          role: 'user',
+          content: `调用 image_workflow_tool，并使用以下 JSON 作为参数：${JSON.stringify(
+            payload,
+          )}。完成后只返回工具输出的 JSON。`,
+        },
+      ],
+      {
+        toolChoice: 'required',
+        structuredOutput: {
+          schema: AgentOutputSchema,
+          errorStrategy: 'strict',
+        },
+        runId: traceId,
+      },
+    );
+
+    const { object: output } = await (agentResponse as any).getFullOutput();
 
     // Build response
     const response: ImageProcessingResponse = {
@@ -73,7 +98,7 @@ export async function POST(request: NextRequest) {
       traceId,
     };
 
-    console.log(`[${traceId}] Successfully processed image: ${output.url}`);
+    console.log(`[${traceId}] Successfully processed image via agent: ${output.url}`);
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {

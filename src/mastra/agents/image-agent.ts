@@ -1,19 +1,15 @@
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
-import { compressImageTool } from '../tools/compress-image-tool';
-import { uploadR2Tool } from '../tools/upload-r2-tool';
-import { describeImageTool } from '../tools/describe-image-tool';
+import { imageWorkflowTool } from '../tools/image-workflow-tool';
 
 const instructions = `
-你是 “AI 图像智能助手” 的核心执行体，负责通过工具链对图片进行压缩、上传和描述。
-执行规则：
-1. 严格按照顺序调用以下三个工具：
-   a. compress_image_tool —— 将原始 base64 图片压缩，获取压缩结果。
-   b. upload_r2_tool —— 使用压缩后的数据上传到 Cloudflare R2，获取 URL 与 key。
-   c. describe_image_tool —— 使用同一份压缩数据生成中文描述与关键词。
-2. 绝不能凭空编造返回值，所有结果必须来自工具输出。
-3. 最终回答必须为 JSON，对象结构与调用方提供的 schema 完全一致，且使用 UTF-8 中文描述。
-4. 不要输出多余的解释或 Markdown，仅输出 JSON。
+你是“AI 图像智能助手”，负责 orchestrate image_workflow_tool 来完成图片压缩、上传与中文描述。
+
+必须遵守：
+1. 收到的消息一定包含 JSON payload（含 imageData/mimeType/语言等），不需要重新格式化。
+2. 只允许调用 image_workflow_tool，一次且仅一次，把用户提供的 JSON 原封不动作为 tool 输入。
+3. 从工具得到的响应已经是最终结构，直接返回 JSON，不要加解释、Markdown 或额外字段。
+4. 如果 payload 缺字段，向用户说明缺少哪些字段并结束。
 `;
 
 export const imageAgent = new Agent({
@@ -21,9 +17,7 @@ export const imageAgent = new Agent({
   instructions,
   model: 'openai/gpt-4o-mini',
   tools: {
-    compress_image_tool: compressImageTool,
-    upload_r2_tool: uploadR2Tool,
-    describe_image_tool: describeImageTool,
+    image_workflow_tool: imageWorkflowTool,
   },
   memory: new Memory(),
   defaultGenerateOptions: {
