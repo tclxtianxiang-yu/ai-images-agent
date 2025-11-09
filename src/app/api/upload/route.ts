@@ -3,17 +3,23 @@ import { z } from 'zod';
 import { ImageUploadSchema, ImageProcessingResponse } from '@/types/image';
 import { mastra } from '@/mastra';
 
-const AgentOutputSchema = z.object({
-  url: z.string(),
-  key: z.string(),
-  description: z.string(),
-  keywords: z.array(z.string()),
-  confidence: z.number(),
-  compressionRatio: z.number(),
-  originalSize: z.number(),
-  compressedSize: z.number(),
-  uploadedAt: z.string(),
-});
+const workflowInputSchema = ImageUploadSchema;
+
+async function runWorkflowDirect(input: z.infer<typeof workflowInputSchema>) {
+  const workflow = mastra.getWorkflow('imageWorkflow');
+  const run = await workflow.createRunAsync({
+    resourceId: input.fileName,
+  });
+  const result = await run.start({
+    inputData: input,
+  });
+
+  if (result.status !== 'success') {
+    throw new Error(result.status === 'failed' ? result.error?.message ?? 'Workflow failed' : 'Workflow suspended');
+  }
+
+  return result.result;
+}
 
 // Note: OpenNext automatically handles Cloudflare Workers deployment
 // No need to explicitly set runtime = 'edge'
@@ -47,11 +53,6 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${traceId}] Processing image: ${fileName} (${fileSize} bytes, ${mimeType})`);
 
-    const agent = mastra.getAgent('imageAgent');
-    if (!agent) {
-      throw new Error('Image agent is not registered.');
-    }
-
     const payload = {
       imageData,
       fileName,
@@ -60,26 +61,7 @@ export async function POST(request: NextRequest) {
       language,
     };
 
-    const agentResult = await agent.generate(
-      [
-        {
-          role: 'user',
-          content: `调用 image_workflow_tool，并使用以下 JSON 作为参数：${JSON.stringify(
-            payload,
-          )}。完成后只返回工具输出的 JSON。`,
-        },
-      ],
-      {
-        toolChoice: 'required',
-        structuredOutput: {
-          schema: AgentOutputSchema,
-          errorStrategy: 'strict',
-        },
-        runId: traceId,
-      },
-    );
-
-    const { object: output } = agentResult;
+    const output = await runWorkflowDirect(payload);
 
     // Build response
     const response: ImageProcessingResponse = {
